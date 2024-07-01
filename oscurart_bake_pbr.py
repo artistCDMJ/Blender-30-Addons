@@ -6,9 +6,9 @@ from mathutils import Vector
 bl_info = {
     "name": "Bake PBR",
     "author": "Eugenio Pignataro (Oscurart)",
-    "version": (1, 3),
-    "blender": (3, 00, 0),
-    "location": "Render > Bake PBR",
+    "version": (1, 4),
+    "blender": (4, 10, 0),
+    "location": "Render > Bake PBR, Node EDitor > Bake PBR",
     "description": "Bake PBR maps",
     "warning": "",
     "wiki_url": "",
@@ -25,18 +25,21 @@ def folderCheck():
     if not os.path.exists(imagesFile):
         os.mkdir(imagesFile)
 
+
 # Set EXR in scene
 def setExr():
     bpy.context.scene.render.image_settings.file_format = "OPEN_EXR"
     bpy.context.scene.render.image_settings.color_mode = "RGBA"
     bpy.context.scene.render.image_settings.exr_codec = "ZIP"
-    bpy.context.scene.render.image_settings.color_depth = "16"    
+    bpy.context.scene.render.image_settings.color_depth = "16"
 
-# Set PNG format    
+
+# Set PNG format
 def setPng():
-    bpy.context.scene.render.image_settings.file_format = "PNG"   
+    bpy.context.scene.render.image_settings.file_format = "PNG"
     bpy.context.scene.render.image_settings.color_mode = "RGBA"
-    bpy.context.scene.render.image_settings.color_depth = "8"       
+    bpy.context.scene.render.image_settings.color_depth = "8"
+
 
 def setSceneOpts():
     global channels
@@ -65,8 +68,8 @@ def setSceneOpts():
         "Subsurface_Radius": [True],
         "Sheen": [False],
         "Sheen_Tint": [False],
-        "Clearcoat" : [False],
-        "Clearcoat_Roughness" : [False],
+        "Clearcoat": [False],
+        "Clearcoat_Roughness": [False],
         "Transmission_Weight": [False],
         "IOR": [False],
         "Emission": [True],
@@ -74,14 +77,15 @@ def setSceneOpts():
         "Alpha": [False],
     }
 
-    setExr() #set exr format
+    setExr()  # set exr format
 
     # set bake options
-    #bpy.context.scene.render.bake_type = "TEXTURE"
+    # bpy.context.scene.render.bake_type = "TEXTURE"
     bpy.context.scene.render.bake.use_pass_direct = 0
     bpy.context.scene.render.bake.use_pass_indirect = 0
     bpy.context.scene.render.bake.use_pass_color = 1
     bpy.context.scene.render.bake.use_selected_to_active = selected_to_active
+
 
 # __________________________________________________________________________________
 
@@ -90,54 +94,54 @@ def setSceneOpts():
 
 def inicialChecking():
     status = 0
-    
-    #if selection is none
+
+    # if selection is none
     if len(bpy.context.selected_objects) == 0:
         if bpy.context.scene.bake_pbr_channels.seltoact:
-            print ( "You need select 2 objects at least." ) 
-            status =1        
-        else:  
-            print ( "you need select 1 objects at least." ) 
+            print("You need select 2 objects at least.")
             status = 1
-    
-    
+        else:
+            print("you need select 1 objects at least.")
+            status = 1
+
     for ob in bpy.context.selected_objects:
         # check material exists and principled
         if len(ob.material_slots) > 0:
             for ms in ob.material_slots:
                 if ms.material != None:
-                     try:
-                        ms.material.node_tree.nodes['Material Output'].inputs[0].links[0].from_node.type == "BSDF_PRINCIPLED"
-                     except:
-                         print("%s does not have principled." % (ms.material.name))  
-                         status =1  
+                    try:
+                        ms.material.node_tree.nodes['Material Output'].inputs[0].links[
+                            0].from_node.type == "BSDF_PRINCIPLED"
+                    except:
+                        print("%s does not have principled." % (ms.material.name))
+                        status = 1
                 else:
-                    print("%s has empty material slot." % (ob.name))  
-                    status = 1                    
-                                         
+                    print("%s has empty material slot." % (ob.name))
+                    status = 1
+
         else:
-            print("%s has not material." % (ob.name)) 
-            status =1     
-        
-        #check if selection is ok
+            print("%s has not material." % (ob.name))
+            status = 1
+
+            # check if selection is ok
         if bpy.context.scene.bake_pbr_channels.seltoact:
             if len(bpy.context.selected_objects) < 2:
-                print ( "You need select 2 objects at least.") 
-                status =1  
+                print("You need select 2 objects at least.")
+                status = 1
 
-    return (status)                              
-            
-            
-# __________________________________________________________________________________            
-            
-            
+    return (status)
+
+
+# __________________________________________________________________________________
+
+
 #  MERGE OBJECTS
 def mergeObjects():
     global selectedObjects
     global object
     global selObject
     global mergeMatSlots
-    
+
     # Make selected and active groups
     object = bpy.context.active_object
     selectedObjects = bpy.context.selected_objects[:].copy()
@@ -190,7 +194,8 @@ def createTempMats():
                     channelMat = mat.copy()
                     channelMat.name = "%s_%s" % (channel, mat.name)
                     principleds = [
-                        node.inputs[0].links[0].from_socket.node for node in channelMat.node_tree.nodes if node.type == "OUTPUT_MATERIAL"]
+                        node.inputs[0].links[0].from_socket.node for node in channelMat.node_tree.nodes if
+                        node.type == "OUTPUT_MATERIAL"]
                     mixs = [
                         node for node in channelMat.node_tree.nodes if node.type == "MIX_SHADER"]
 
@@ -203,7 +208,8 @@ def createTempMats():
                     for prin in principleds:
                         if prin.inputs[channel.replace("_", " ")].is_linked:
                             channelMat.node_tree.links.new(
-                                prin.outputs['BSDF'].links[0].to_socket, prin.inputs[channel.replace("_", " ")].links[0].from_socket)
+                                prin.outputs['BSDF'].links[0].to_socket,
+                                prin.inputs[channel.replace("_", " ")].links[0].from_socket)
                         else:
                             inputRGB = channelMat.node_tree.nodes.new(
                                 "ShaderNodeRGB")
@@ -218,7 +224,7 @@ def createTempMats():
                                     inputRGB.outputs[0].default_value = prin.inputs[channel.replace(
                                         "_", " ")].default_value[:] + (1,)
                             else:
-                                rgbValue = prin.inputs[channel.replace("_"," ")].default_value
+                                rgbValue = prin.inputs[channel.replace("_", " ")].default_value
                                 inputRGB.outputs[0].default_value = (
                                     rgbValue, rgbValue, rgbValue, 1)
         # normal
@@ -241,6 +247,7 @@ def cambiaSlots(selObject, canal):
 def restauraSlots(selObject):
     for actualMs, originalMs in zip(selObject.material_slots, mergeMatSlots):
         actualMs.material = bpy.data.materials[originalMs.name]
+
 
 # __________________________________________________________________________________
 
@@ -282,13 +289,10 @@ def bake(map, frame, udim):
                                                bpy.context.scene.bake_pbr_channels,
                                                "sequence") else "")
 
-
-    #UDIM
+    # UDIM
     if bpy.context.scene.bake_pbr_channels.UDIMS != "":
-        img.filepath = img.filepath.replace(".","_%s." % (udim))
-    
-    
-    
+        img.filepath = img.filepath.replace(".", "_%s." % (udim))
+
     # cambio todos los slots por el del canal
     cambiaSlots(selObject, map)
 
@@ -299,7 +303,7 @@ def bake(map, frame, udim):
             node = activeMat.node_tree.nodes.new("ShaderNodeTexImage")
             node.image = img
             activeMat.node_tree.nodes.active = node
-            #node.image.colorspace_settings.name = "Non-Colour Data"
+            # node.image.colorspace_settings.name = "Non-Colour Data"
             node.select = True
             node.name = "BakePBRTemp"
     else:
@@ -308,7 +312,7 @@ def bake(map, frame, udim):
         node = activeMat.node_tree.nodes.new("ShaderNodeTexImage")
         node.image = img
         activeMat.node_tree.nodes.active = node
-        #node.image.colorspace_settings.name = "Non-Colour Data"
+        # node.image.colorspace_settings.name = "Non-Colour Data"
         node.select = True
         node.name = "BakePBRTemp"
 
@@ -317,37 +321,36 @@ def bake(map, frame, udim):
     else:
         bpy.ops.object.bake(type="NORMAL")
     img.save_render(img.filepath)
-    
+
     # save png copy
     if bpy.context.scene.bake_pbr_channels.use_pngcopy:
-        setPng()    
-        oimg = bpy.data.images.load(img.filepath)    
-        if  any(ColorChan in oimg.filepath for ColorChan in ["Color","Emission"]) :
-            oimg.colorspace_settings.name="Linear Rec.709"
+        setPng()
+        oimg = bpy.data.images.load(img.filepath)
+        if any(ColorChan in oimg.filepath for ColorChan in ["Color", "Emission"]):
+            oimg.colorspace_settings.name = "Linear Rec.709"
         else:
 
-            oimg.colorspace_settings.name="sRGB"#OfficialLuts 
-    
-        vt=bpy.context.scene.view_settings.view_transform #save viewtransform
-        vLook=bpy.context.scene.view_settings.look
+            oimg.colorspace_settings.name = "sRGB"  # OfficialLuts
 
-        bpy.context.scene.view_settings.view_transform = "Standard"  #OfficialLuts  
-         
-        bpy.context.scene.view_settings.look="None"                 
-        oimg.save_render(oimg.filepath.replace("exr","png")) #save png  
-        #restore color management
+        vt = bpy.context.scene.view_settings.view_transform  # save viewtransform
+        vLook = bpy.context.scene.view_settings.look
+
+        bpy.context.scene.view_settings.view_transform = "Standard"  # OfficialLuts
+
+        bpy.context.scene.view_settings.look = "None"
+        oimg.save_render(oimg.filepath.replace("exr", "png"))  # save png
+        # restore color management
         bpy.context.scene.view_settings.view_transform = vt
-        bpy.context.scene.view_settings.look = vLook 
-        #cleanup
-        bpy.data.images.remove(oimg)     
+        bpy.context.scene.view_settings.look = vLook
+        # cleanup
+        bpy.data.images.remove(oimg)
         setExr()
-        
-        
-    #delete exr    
+
+    # delete exr
     if bpy.context.scene.bake_pbr_channels.delete_exr:
         os.remove(img.filepath)
-    
-    #clearimage
+
+    # clearimage
     bpy.data.images.remove(img)
     print("%s Done!" % (map))
 
@@ -361,33 +364,29 @@ def bake(map, frame, udim):
     time_elapsed = datetime.now() - start_time
     print('Time elapsed (hh:mm:ss.ms) {}'.format(time_elapsed))
 
-    
-
 
 # __________________________________________________________________________________
 # UDIMS
 
-def offsetUdims(bakerestore,udim):
-
-    horizontal =(int(udim[-1])-1) * bakerestore
+def offsetUdims(bakerestore, udim):
+    horizontal = (int(udim[-1]) - 1) * bakerestore
     vertical = int(udim[-2]) * bakerestore
-    offset = Vector((horizontal,vertical))
+    offset = Vector((horizontal, vertical))
     # use object like a global name
-    for vcorn in  object.data.uv_layers.active.uv:
-        vcorn.vector += offset    
+    for vcorn in object.data.uv_layers.active.uv:
+        vcorn.vector += offset
 
+    # __________________________________________________________________________________
 
-# __________________________________________________________________________________
 
 def executePbr():
-    
     engine = bpy.context.scene.render.engine
     vtr = bpy.context.scene.view_settings.view_transform
     look = bpy.context.scene.view_settings.look
-    try:    
+    try:
         bpy.context.scene.view_settings.view_transform = "Linear Raw"
     except:
-        bpy.context.scene.view_settings.view_transform = "Raw"    
+        bpy.context.scene.view_settings.view_transform = "Raw"
     bpy.context.scene.view_settings.look = "None"
 
     # bakeo
@@ -395,7 +394,6 @@ def executePbr():
     setSceneOpts()
     mergeObjects()
     createTempMats()
-       
 
     for map in channelsDict.keys():
         if getattr(bpy.context.scene.bake_pbr_channels, map):
@@ -404,16 +402,16 @@ def executePbr():
                         bpy.context.scene.frame_start,
                         bpy.context.scene.frame_end + 1):
                     bpy.context.scene.frame_set(frameNumber)
-                    bake(map, frameNumber,"")
+                    bake(map, frameNumber, "")
             else:
                 if UDIMS == "":
                     bake(map, "", "")
                 else:
                     for UDIM in bpy.context.scene.bake_pbr_channels['UDIMS'].split(","):
-                        offsetUdims(-1,UDIM) #UDIMS  OFFSET   
+                        offsetUdims(-1, UDIM)  # UDIMS  OFFSET
                         bake(map, "", UDIM)
-                        offsetUdims(1,UDIM)#UDIMS RESTORE
-                    
+                        offsetUdims(1, UDIM)  # UDIMS RESTORE
+
     # remuevo materiales copia
     for ma in bpy.data.materials:
         if ma.users == 0:
@@ -426,12 +424,13 @@ def executePbr():
             do_unlink=True,
             do_id_user=True,
             do_ui_user=True)
-    
+
     bpy.context.scene.render.engine = engine
     bpy.context.scene.view_settings.view_transform = vtr
     bpy.context.scene.view_settings.look = look
 
-class BakePbr (bpy.types.Operator):
+
+class BakePbr(bpy.types.Operator):
     """Bake PBR materials"""
     bl_idname = "object.bake_pbr_maps"
     bl_label = "Bake PBR Maps"
@@ -440,12 +439,12 @@ class BakePbr (bpy.types.Operator):
     def poll(cls, context):
         return context.active_object is not None
 
-    def execute(self, context):        
-        
-        #inicial checking , if initial checking is ok let you continue
-        if  inicialChecking()  ==  0 :    
-            executePbr()      
-        else:            
+    def execute(self, context):
+
+        # inicial checking , if initial checking is ok let you continue
+        if inicialChecking() == 0:
+            executePbr()
+        else:
             self.report({'WARNING'}, "ERROR, check console")
         return {'FINISHED'}
 
@@ -464,10 +463,10 @@ class bakeChannels(bpy.types.PropertyGroup):
         name="Subsurface Color", default=False)
     Subsurface_Radius: bpy.props.BoolProperty(
         name="Subsurface Radius", default=False)
-    Sheen: bpy.props.BoolProperty(name="Sheen", default=False)  
-    Sheen_Tint: bpy.props.BoolProperty(name="Sheen Tint", default=False)   
-    Clearcoat : bpy.props.BoolProperty(name="Clearcoat", default=False) 
-    Clearcoat_Roughness : bpy.props.BoolProperty(name="Clearcoat Roughness", default=False) 
+    Sheen: bpy.props.BoolProperty(name="Sheen", default=False)
+    Sheen_Tint: bpy.props.BoolProperty(name="Sheen Tint", default=False)
+    Clearcoat: bpy.props.BoolProperty(name="Clearcoat", default=False)
+    Clearcoat_Roughness: bpy.props.BoolProperty(name="Clearcoat Roughness", default=False)
     Transmission_Weight: bpy.props.BoolProperty(name="Transmission Weight", default=False)
     IOR: bpy.props.BoolProperty(name="IOR", default=False)
     Emission: bpy.props.BoolProperty(name="Emission", default=False)
@@ -476,26 +475,31 @@ class bakeChannels(bpy.types.PropertyGroup):
     sizex: bpy.props.IntProperty(name="Size x", default=1024)
     sizey: bpy.props.IntProperty(name="Size y", default=1024)
     seltoact: bpy.props.BoolProperty(name="Selected to active", default=True)
-    use_pngcopy: bpy.props.BoolProperty(name="Get a png copy", default=True)    
-    delete_exr: bpy.props.BoolProperty(name="Delete EXR at finish", default=False)   
+    use_pngcopy: bpy.props.BoolProperty(name="Get a png copy", default=True)
+    delete_exr: bpy.props.BoolProperty(name="Delete EXR at finish", default=False)
     sequence: bpy.props.BoolProperty(name="Render sequence", default=False)
     UDIMS: bpy.props.StringProperty(name="UDIMS", default="")
+
 
 bpy.utils.register_class(bakeChannels)
 
 
-class OSCPBR_PT_LayoutDemoPanel(bpy.types.Panel):
-    """Creates a Panel in the scene context of the properties editor"""
+class OSCPBR_PT_BakePanel(bpy.types.Panel):
+    """Creates a Panel in the scene context of the properties editor and Shader Editor"""
     bl_label = "Bake PBR"
-    bl_idname = "RENDER_PT_layout"
-    bl_space_type = 'PROPERTIES'
-    bl_region_type = 'WINDOW'
-    bl_context = "render"
-    """
-    @classmethod
-    def poll(cls, context):
-        return bpy.context.scene.render.engine == "CYCLES"
-    """
+    bl_space_type = 'PROPERTIES' and 'NODE_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "Bake PBR"
+
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw_header(self, context):
+        space = context.space_data
+        if space.type == 'PROPERTIES':
+            bl_context = "render"
+
+        if space.type == 'NODE_EDITOR':
+            bl_category = "Bake PBR"
 
     def draw(self, context):
         layout = self.layout
@@ -514,7 +518,7 @@ class OSCPBR_PT_LayoutDemoPanel(bpy.types.Panel):
         row = layout.row()
         row.prop(scene.bake_pbr_channels, "Specular")
         row = layout.row()
-        row.prop(scene.bake_pbr_channels, "Specular_Tint")        
+        row.prop(scene.bake_pbr_channels, "Specular_Tint")
         row = layout.row()
         row.prop(scene.bake_pbr_channels, "Subsurface")
         row = layout.row()
@@ -524,11 +528,11 @@ class OSCPBR_PT_LayoutDemoPanel(bpy.types.Panel):
         row = layout.row()
         row.prop(scene.bake_pbr_channels, "Sheen")
         row = layout.row()
-        row.prop(scene.bake_pbr_channels, "Sheen_Tint") 
+        row.prop(scene.bake_pbr_channels, "Sheen_Tint")
         row = layout.row()
-        row.prop(scene.bake_pbr_channels, "Clearcoat") 
+        row.prop(scene.bake_pbr_channels, "Clearcoat")
         row = layout.row()
-        row.prop(scene.bake_pbr_channels, "Clearcoat_Roughness")                                
+        row.prop(scene.bake_pbr_channels, "Clearcoat_Roughness")
         row = layout.row()
         row.prop(scene.bake_pbr_channels, "Transmission_Weight")
         row = layout.row()
@@ -540,16 +544,16 @@ class OSCPBR_PT_LayoutDemoPanel(bpy.types.Panel):
         row = layout.row()
         row.prop(scene.bake_pbr_channels, "Alpha")
         row = layout.row()
-        row.prop(scene.bake_pbr_channels, "UDIMS")        
+        row.prop(scene.bake_pbr_channels, "UDIMS")
         row = layout.row()
         row.prop(scene.bake_pbr_channels, "sizex")
         row.prop(scene.bake_pbr_channels, "sizey")
         row = layout.row()
         row.prop(scene.bake_pbr_channels, "seltoact")
         row = layout.row()
-        row.prop(scene.bake_pbr_channels, "use_pngcopy")   
+        row.prop(scene.bake_pbr_channels, "use_pngcopy")
         row = layout.row()
-        row.prop(scene.bake_pbr_channels, "delete_exr")              
+        row.prop(scene.bake_pbr_channels, "delete_exr")
         row = layout.row()
         row.prop(scene.bake_pbr_channels, "sequence")
         # Big render button
@@ -572,12 +576,12 @@ def loadPBRMaps():
 
     for input in principledInputs:
         if os.path.exists(
-            "%s/%s_%s.exr" %
-            (imgpath,
-             mat.name,
-             input.replace(
-                 " ",
-                 ""))):
+                "%s/%s_%s.exr" %
+                (imgpath,
+                 mat.name,
+                 input.replace(
+                     " ",
+                     ""))):
             print("Channel %s connected" % (input.replace(" ", "")))
             img = bpy.data.images.load(
                 "%s/%s_%s.exr" %
@@ -606,7 +610,7 @@ def loadPBRMaps():
                 loc -= 300
 
 
-class loadPbrMaps (bpy.types.Operator):
+class loadPbrMaps(bpy.types.Operator):
     """Load bakePBR maps"""
     bl_idname = "material.load_pbr_maps"
     bl_label = "Load PBR Maps"
@@ -619,19 +623,20 @@ class loadPbrMaps (bpy.types.Operator):
         loadPBRMaps()
         return {'FINISHED'}
 
+
 # ---------------------------------------------------------------------------------
 
 
 def register():
     bpy.types.Scene.bake_pbr_channels = bpy.props.PointerProperty(
         type=bakeChannels)
-    bpy.utils.register_class(OSCPBR_PT_LayoutDemoPanel)
+    bpy.utils.register_class(OSCPBR_PT_BakePanel)
     bpy.utils.register_class(BakePbr)
     bpy.utils.register_class(loadPbrMaps)
 
 
 def unregister():
-    bpy.utils.unregister_class(OSCPBR_PT_LayoutDemoPanel)
+    bpy.utils.unregister_class(OSCPBR_PT_BakePanel)
     bpy.utils.unregister_class(BakePbr)
     bpy.utils.unregister_class(loadPbrMaps)
 
